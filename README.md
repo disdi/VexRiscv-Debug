@@ -5,8 +5,6 @@
 
 
 
-# Below components are involved in the project
-
 ## RISC-V ISA
 
 RISC-V is an open standard instruction set architecture based on established RISC (Reduced Instruction Set Computer) principles.
@@ -23,117 +21,91 @@ Comparing to ARM and x86, a RISC-V CPU has the following advantages:
 
 VexRiscv is an FPGA-friendly CPU core that implements the RISC-V instruction set architecture (ISA). Designed with flexibility and scalability in mind, it caters to a wide range of applications, from compact microcontroller-based systems to more complex multi-core configurations. The project is open-source under the MIT license, promoting community collaboration and adaptation. 
 
-**Key Features of VexRiscv:**
-
-- **RISC-V Compliance:** Supports the RV32IM instruction set, ensuring compatibility with the RISC-V standard.
-
-- **Pipelined Architecture:** Utilizes a 5-stage pipeline comprising Fetch, Decode, Execute, Memory, and WriteBack stages, optimizing instruction throughput.
-
-- **Optional Extensions:** Offers configurable features such as multiplication and division (MUL/DIV) units, instruction and data caches, memory management unit (MMU), and debug extensions.
-
-- **Interrupt and Exception Handling:** Implements mechanisms for managing interrupts and exceptions, supporting both Machine and User modes as specified in the RISC-V privileged specification.
-
-- **FPGA Optimization:** Tailored for efficient deployment on FPGA platforms, balancing performance and resource utilization.
-
-- **Minimal Debug Support:** Includes optional debug extensions compatible with GDB via OpenOCD and JTAG interfaces, facilitating software development and troubleshooting.
-
 VexRiscv is developed using SpinalHDL, a high-level hardware description language that enhances design modularity and reusability. This approach allows for a plugin-based architecture, enabling users to customize and extend the CPU's capabilities to meet specific project requirements.
 
+## RISC-V Minimal Viable Debugger
 
+To create a minimum viable debugger, you need the following capabilities:
 
-## Enhance Debug support in Vexriscv
+*   **Memory Access**: The ability to **peak and poke** memory. This means reading from and writing to specific memory locations.
 
- VexRiscv processor's debug capabilities are primarily based on the RISC-V Debug Specification version 0.13.2. The DebugPlugin provides essential features such as halting, stepping, and resetting the processor, as well as basic breakpoint support. However, it does not encompass the more advanced features introduced in the latest RISC-V Debug Specification.
+*   **CPU Register Access**: The ability to **read and write CPU registers**. Registers are special storage locations within the CPU that are used for calculations, control, and status information.
 
- To update the VexRiscv debug implementation to align with the latest RISC-V Debug Specification (version 1.0.0-rc3 or later), the following modifications are needed:
+*   **CPU Control**: The ability to **control the CPU**. This involves several key actions:
+    *   **Halting the CPU**: Stopping the CPU's execution.
+    *  **Single-stepping the CPU**: Executing one instruction at a time.
+    *   **Resetting the CPU**: Restarting the CPU.
+    *   **Setting Breakpoints**: Pausing the CPU when it reaches a certain instruction or memory location.
 
----
+Here's a simplified diagram representing these core components:
 
-### 1. **Advanced Trigger Support**
-- **What to Add:**
-  - Implement `mcontrol6` for advanced trigger functionality. This would support features like:
-    - Conditional breakpoints.
-    - Execution triggers based on specific data matches or memory access types.
-    - Address-dependent watchpoints.
-  - Add support for external triggers (`tmexttrigger`) to allow interaction with external debugging tools or hardware signals.
-- **Impact:**
-  - Increases flexibility for debugging complex scenarios but may require additional resources for trigger logic.
-
----
-
-### 2. **Abstract Command Enhancements**
-- **What to Add:**
-  - Extend abstract command support for:
-    - Direct memory access (Abstract Memory Access commands).
-    - CSR access without reliance on the program buffer.
-  - Implement sticky error handling for more robust debugging (e.g., `stickyunavail`).
-- **Impact:**
-  - Improves debugging efficiency by minimizing dependency on program buffer execution.
-  - Enhances compatibility with modern debugging tools.
-
----
-
-### 3. **System Bus Access (SBA) Improvements**
-- **What to Add:**
-  - Enhance System Bus Access (SBA) to:
-    - Support auto-increment for memory transfers.
-    - Enable larger address widths (64-bit or beyond) for compatibility with modern systems.
-  - Implement robust error reporting for SBA operations.
-- **Impact:**
-  - Streamlines debugging of memory-heavy operations and peripheral interactions.
+```
+     +---------------------+      +-----------------------+
+     |    Debugger Host    |      |    Target Device      |
+     +---------------------+      +-----------------------+
+             |                           |
+             |      (Debug Interface)    |
+             v                           v
+    +-----------------------+      +-----------------------+
+    |   Memory Access      |----->| Memory                |
+    |  (Read/Write)        |      |                       |
+    +-----------------------+      +-----------------------+
+             |                           |
+             |                           |
+    +-----------------------+      +-----------------------+
+    | CPU Register Access  |----->| CPU Registers         |
+    |  (Read/Write)        |      |                       |
+    +-----------------------+      +-----------------------+
+             |                           |
+             |                           |
+    +-----------------------+      +-----------------------+
+    |   CPU Control         |----->| CPU (Halt, Step, etc.)|
+    | (Halt, Step, Reset)   |      |                       |
+    +-----------------------+      +-----------------------+
+```
 
 ---
 
-### 4. **Multi-Hart Debug Support**
-- **What to Add:**
-  - Add features for managing multiple harts, such as:
-    - Halt groups to synchronize debugging operations across multiple processors.
-    - Improved synchronization mechanisms for multi-threaded systems.
-  - Modify the debug module to accommodate multiple hart contexts and handle independent or grouped operations.
-- **Impact:**
-  - Essential for debugging multi-core systems but increases implementation complexity.
+### VexRiscv Debugging
+
+The VexRiscv soft core supports minimal debugging by utilizing a debug plugin, which has two registers that allow for complete control of the CPU.
+
+*   The first register, Control Register, accessed at address zero, is a 32-bit register used to control the CPU. Through this register, it is possible to:
+    *   Reset the CPU.
+    *   Check if the CPU is halted.
+    *   Single-step the CPU.
+    *   Detect if the CPU has hit a breakpoint.
+
+*   The second Instruction Injection Port is used to inject instructions into the CPU pipeline. By writing an instruction to this register, the CPU executes the instruction when it is paused.  The result of the instruction is then read from the same register. This allows for reading and writing to all of the CPU registers.
+    *   For example, by injecting an instruction that moves a value from one register to another, the debugger can read the value of the source register by examining the destination register after execution.
+    *   This same method can be used to construct memory addresses and write values to memory.
+
+With these two registers, the core has all the necessary functions for a complete debugger, thus meeting the minimum requirements of a viable debugger.
 
 ---
 
-### 5. **Virtualization and Security Enhancements**
-- **What to Add:**
-  - Add support for hypervisor-specific debugging features, such as:
-    - `hcontext` registers for managing debug states in virtualized environments.
-    - Virtualization-aware triggers and breakpoints.
-  - Enhance debug access security through:
-    - Authentication mechanisms.
-    - Configurable debug privilege levels.
-- **Impact:**
-  - Aligns with modern trends in secure and virtualized computing environments.
+### Comparison to RISC-V Debug Specification Methods
+
+#### Memory Access Methods
+
+To be compliant, the implementation must have at least one of the memory access mechanisms: Program Buffer, Abstract Access Memory or System Bus Access (SBA).
+
+- **Program Buffer**: VexRiscv does not use a dedicated program buffer as specified in the RISC-V debug specification. Instead, it uses a single instruction injection port, where instructions are executed directly in the CPU pipeline. This offers similar capabilities to the RISC-V program buffer, but limited to a single instruction at a time.
+- **Abstract Access Memory**: VexRiscv doesn’t directly implement an abstract access memory command. Instead, it uses its instruction injection port to achieve similar functionality, allowing the debugger to execute any memory access instruction and thus access memory from the hart's perspective.
+- **System Bus Access**: VexRiscv does not implement a separate system bus access block. The instruction injection mechanism is used to access memory and registers, which provides similar functionality but with instructions executed by the CPU. This means it cannot use this method to access memory while the CPU is running, as described in the RISC-V debug specification.
+
+#### Register Access
+
+- VexRiscv's debug implementation accesses CSRs by injecting RISC-V instructions to read or write to these registers.
+- RISC-V debug specification states the Control and Status Registers (CSRs) are accessed using the abstract access register, by or-ing the register number with 0x1000. CSRs can also be accessed using the program buffer, if abstract access is not support
+
+#### Control Register
+
+-  VexRiscv uses a single, custom control register for debug control, while the RISC-V debug specification employs a more standardized and distributed approach with multiple control registers.
 
 ---
 
-### 6. **Debug Transport and Interfaces**
-- **What to Add:**
-  - Refine Debug Module Interface (DMI) and Debug Transport Module (DTM) protocols:
-    - Support concurrent access via multiple transports (e.g., JTAG, UART).
-    - Provide better error handling and status reporting.
-- **Impact:**
-  - Improves compatibility and reliability across diverse debugging tools.
-
----
-
-### 7. **Additional Features**
-- **Program Buffer Enhancements:**
-  - Expand the program buffer size for more complex debugging scripts.
-- **Counter and Timer Controls:**
-  - Implement optional features like halting counters/timers selectively (e.g., `dcsr.stepie` enhancements).
-- **Instruction Injection Improvements:**
-  - Support direct instruction injection for debugging at specific execution states.
-
----
-
-### Implementation Challenges
-- **Increased Complexity:** Enhancements such as multi-hart support and advanced triggers will increase design complexity.
-- **Resource Overheads:** Additional logic for triggers, SBA, and memory handling may increase FPGA or ASIC resource utilization.
-- **Backward Compatibility:** Ensure backward compatibility with debugging tools that rely on version 0.13.2 features.
-
----
 
 ### Summary
-Enhancing the VexRiscv debug implementation involves integrating advanced features from the latest RISC-V Debug Specification, focusing on triggers, SBA, multi-hart debugging, and security. These updates will significantly enhance debugging capabilities, aligning with modern hardware and software debugging requirements. Let me know if you'd like a detailed breakdown for any specific feature!
+
+By addressing these points, VexRiscv can achieve full compliance with the RISC-V debug specification, ensuring greater interoperability with standard debugging tools and environments. The current custom implementation provides a way to debug VexRiscv, but it is not compliant with the specification.
