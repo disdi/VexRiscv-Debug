@@ -121,7 +121,7 @@ A custom version of OpenOCD acts as the glue between GDB and the VexRiscv debug 
 
 ## Benefits of standardized Debugging
 
-The VexRiscv CPU has its own specific debugging implementation that is not compatible with the standard RISC-V Debug Specification. It can achieve full compliance with the RISC-V debug specification, ensuring greater interoperability with standard debugging tools and environments like mentioned below :
+The VexRiscv CPU has its own specific debugging implementation that is not compatible with the [standard RISC-V Debug Specification](https://github.com/riscv/riscv-debug-spec). It can achieve full compliance with the RISC-V debug specification, ensuring greater interoperability with standard debugging tools and environments like mentioned below :
 
 - No longer custom version of debug software like [OpenOCD](https://github.com/NouranAbdelaziz/vexriscv_ocd_blog) would be needed to debug VexRiscv.
 
