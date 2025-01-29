@@ -19,7 +19,7 @@ Comparing to ARM and x86, a RISC-V CPU has the following advantages:
 
 ### RISC-V Minimal Viable Debugger
 
-To create a minimum viable debugger, you need the following capabilities:
+To create a minimum viable debugger on a RISC-V Processor, you need the following capabilities:
 
 *   **Memory Access**: The ability to **peak and poke** memory. This means reading from and writing to specific memory locations.
 
@@ -86,10 +86,12 @@ With these two registers, the core has all the necessary functions for a complet
 
 ### JTAG support in Vexriscv
 
-JTAG stands for Joint Test Action Group. JTAG support in VexRiscv is implemented through a combination of hardware and software components that adhere to the JTAG standard (IEEE 1149.1). The diagram  below describe how a host computer (with GDB) uses a JTAG interface to debug a VexRiscv CPU.
+JTAG stands for **Joint Test Action Group**. JTAG support in VexRiscv is implemented through a combination of hardware and software components that adhere to the JTAG standard (IEEE 1149.1).
+
+The diagram  below describe how a host computer (with GDB) uses a JTAG interface to debug a VexRiscv CPU.
 
                                       +-----------------+
-                                      |    GDB (Host)   |
+                                      |    GDB (Host PC)|
                                       +-------+---------+
                                               | (GDB remote target protocol)
                                               v
@@ -113,21 +115,21 @@ JTAG stands for Joint Test Action Group. JTAG support in VexRiscv is implemented
                                        +--------------------------+
 
 Debugging VexRiscv using JTAG involves connecting a JTAG dongle to the FPGA, and then using OpenOCD with a VexRiscv specific driver, to communicate with the JTAG bridge, which accesses the CPU debug module, all while GDB executes on the host machine.
-The custom version of OpenOCD acts as the glue between GDB and the VexRiscv debug logic, handling the low-level JTAG communication.                                       
+A custom version of OpenOCD acts as the glue between GDB and the VexRiscv debug logic, handling the low-level JTAG communication.                                       
 
 ---
 
 ## Benefits of standardized Debugging
 
-VexRiscv can achieve full compliance with the RISC-V debug specification, ensuring greater interoperability with standard debugging tools and environments. 
+The VexRiscv CPU has its own specific debugging implementation that is not compatible with the standard RISC-V Debug Specification. It can achieve full compliance with the RISC-V debug specification, ensuring greater interoperability with standard debugging tools and environments like mentioned below :
 
-- Custom version of debug software like [OpenOCD](https://github.com/NouranAbdelaziz/vexriscv_ocd_blog) is also needed to debug VexRiscv.
+- No longer custom version of debug software like [OpenOCD](https://github.com/NouranAbdelaziz/vexriscv_ocd_blog) would be needed to debug VexRiscv.
 
-- Support for other debug transport like SWD.
+- Support for other debug transport like SWD would be possible.
 
 ### SWD support in Vexriscv
 
-SWD stands for Serial Wire Debug. The key differences between  JTAG and SWD are :
+SWD stands for **Serial Wire Debug**. The key differences between  JTAG and SWD are :
 
 * SWD uses a two-wire interface (SWCLK and SWDIO) whereas JTAG uses four wires.
 * SWD is generally faster than JTAG due to less overhead.
@@ -174,3 +176,40 @@ To be compliant, the implementation must have at least one of the memory access 
 * Create a GDB server that can communicate with the DTM over the SWD interface. This server would use the standard RISC-V debug commands.
 
 * Tools like OpenOCD or probe-rs can be used as a basis for the GDB server, given that they support RISC-V debug specification.
+
+The following conceptual diagram explains the general components and data flow involved in debugging via SWD:
+
+                                  +-----------------+
+                                  | Debug Host PC   |
+                                  | (GDB, OpenOCD)  |
+                                  +-----------------+
+                                          |
+                                          | SWD Protocol over USB/JTAG
+                                          V
+                         +---------------------------------------+
+                         |          Debug Adapter              |
+                         | (USB/JTAG to SWD Converter)        |
+                         +---------------------------------------+
+                                          | SWCLK, SWDIO
+                                          V
+    +-----------------------------------------------------------------------+
+    |                         Target System                                 |
+    |    +-------------------+        +----------------------+              |
+    |    |    SWD Pins       |------->|     SW-DP            |              |
+    |    | (SWCLK, SWDIO)    |        | (Debug Port)         |              |
+    |    +-------------------+        +----------------------+              |
+    |                                         | DMI                         |
+    |                                         V                             |
+    |        +--------------+     +-----------------------+     +-----------+
+    |        |   VexRiscv  |      |     Debug Module      |     |  Memory   |
+    |        |     CPU     |----->| (Registers, Control)  |---->|  System   |
+    |        +--------------+     +-----------------------+     |  Bus      |
+    |                                                           +-----------+
+    +-----------------------------------------------------------------------+
+
+In the diagram:
+* The Debug Host PC runs debugging software such as GDB and OpenOCD.
+* The Debug Transport Module converts the USB/JTAG interface to SWD, communicating with the target system through the SWCLK and SWDIO pins.
+* The SW-DP (Debug Port) handles the SWD protocol and provides access to the Debug Module.
+* The Debug Module provides access to the CPU's registers, controls the CPU execution, and provides access to system memory via the system bus.
+* The VexRiscv CPU and the Memory System are debugged through this interface.
