@@ -179,33 +179,7 @@ To be compliant, the implementation must have at least one of the memory access 
 
 The following conceptual diagram explains the general components and data flow involved in debugging via SWD:
 
-                                  +-----------------+
-                                  | Debug Host PC   |
-                                  | (GDB, OpenOCD)  |
-                                  +-----------------+
-                                          |
-                                          | SWD Protocol over USB/JTAG
-                                          V
-                         +---------------------------------------+
-                         |          Debug Adapter              |
-                         | (USB/JTAG to SWD Converter)        |
-                         +---------------------------------------+
-                                          | SWCLK, SWDIO
-                                          V
-    +-----------------------------------------------------------------------+
-    |                         Target System                                 |
-    |    +-------------------+        +----------------------+              |
-    |    |    SWD Pins       |------->|     SW-DP            |              |
-    |    | (SWCLK, SWDIO)    |        | (Debug Port)         |              |
-    |    +-------------------+        +----------------------+              |
-    |                                         | DMI                         |
-    |                                         V                             |
-    |        +--------------+     +-----------------------+     +-----------+
-    |        |   VexRiscv  |      |     Debug Module      |     |  Memory   |
-    |        |     CPU     |----->| (Registers, Control)  |---->|  System   |
-    |        +--------------+     +-----------------------+     |  Bus      |
-    |                                                           +-----------+
-    +-----------------------------------------------------------------------+
+<img src="docs_sample/images/SWD.png" alt="MkDocs icon" width="2070">
 
 In the diagram:
 * The Debug Host PC runs debugging software such as GDB and OpenOCD.
