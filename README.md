@@ -21,7 +21,7 @@ Comparing to ARM and x86, a RISC-V CPU has the following advantages:
 
 To create a minimum viable debugger on a RISC-V Processor, you need the following capabilities:
 
-*   **Memory Access**: The ability to **peak and poke** memory. This means reading from and writing to specific memory locations.
+*   **Memory Access**: The ability to **peek and poke** memory. This means reading from and writing to specific memory locations. Alternatively, the ability to push instructions (through the program buffer) can also suffice if direct memory access is not possible or is restricted.
 
 *   **CPU Register Access**: The ability to **read and write CPU registers**. Registers are special storage locations within the CPU that are used for calculations, control, and status information.
 
@@ -121,11 +121,22 @@ A custom version of OpenOCD acts as the glue between GDB and the VexRiscv debug 
 
 ## Benefits of standardized Debugging
 
-The VexRiscv CPU has its own specific debugging implementation that is not compatible with the [standard RISC-V Debug Specification](https://github.com/riscv/riscv-debug-spec). It can achieve full compliance with the RISC-V debug specification, ensuring greater interoperability with standard debugging tools and environments like mentioned below :
+The VexRiscv CPU has its own specific debugging implementation that is not compatible with the [standard RISC-V Debug Specification](https://github.com/riscv/riscv-debug-spec). Current deviation from the ratified RISC-V debug specification is listed  below :
 
-- No longer custom version of debug software like [OpenOCD](https://github.com/NouranAbdelaziz/vexriscv_ocd_blog) would be needed to debug VexRiscv.
+| Ratified Debug Spec Feature            | VexRiscv Support Status                                           |
+| -------------------------------------- | ----------------------------------------------------------------- |
+| Halt/Resume/Singlestep                 | ✅ Supported                                                      |
+| Register (GPR/CSR) Read/Write          | ✅ Via instruction injection                                      |
+| Memory Access via Abstract Commands    | ❌ Not standard; done via instruction injection                   |
+| Hardware Breakpoints / Triggers        | ⚠️ Basic support; some issues remain                              |
+| Program Buffer                         | ✅ Supported                                                      |
+| Multi-hart / Multi-DM support          | ⚠️ Some support shown in scripts, but full spec semantics unclear |
+| Alternate Transport Modules (non-JTAG) | ❌ Not implemented                                                |
+| Full DM/DTM layer per spec             | ❌ Partial; custom version used                                   |
 
-- Support for other debug transport like SWD would be possible.
+Other than above features , below feature needs to be implemented :
+
+- Support for other debug transport like SWD.
 
 ### SWD support in Vexriscv
 
@@ -138,7 +149,7 @@ To add support for the RISC-V debug standard over SWD in VexRiscv below steps ne
 
 #### 1. Debug Module (DM) Implementation:
 
-* RISC-V debug standard DM handles all control operations regarding Halting and Resuming the CPU.
+* RISC-V debug standard DM handles all control operations regarding Halting and Resuming the CPU. Current implementation of Program Buffer in Vexriscv can probably handle this part.
 
 #### 2. Debug Transport Module (DTM) Implementation:
 
@@ -153,7 +164,7 @@ To add support for the RISC-V debug standard over SWD in VexRiscv below steps ne
 
 To be compliant, the implementation must have at least one of the memory access mechanisms: Program Buffer, Abstract Access Memory or System Bus Access (SBA).
 
-- **Program Buffer**: VexRiscv does not use a dedicated program buffer as specified in the RISC-V debug specification. Instead, it uses a single instruction injection port, where instructions are executed directly in the CPU pipeline. This offers similar capabilities to the RISC-V program buffer, but limited to a single instruction at a time.
+- **Program Buffer**: VexRiscv supports  program buffer as specified in the RISC-V debug specification.
 - **Abstract Access Memory**: VexRiscv doesn’t directly implement an abstract access memory command. Instead, it uses its instruction injection port to achieve similar functionality, allowing the debugger to execute any memory access instruction and thus access memory from the hart's perspective.
 - **System Bus Access**: VexRiscv does not implement a separate system bus access block. The instruction injection mechanism is used to access memory and registers, which provides similar functionality but with instructions executed by the CPU. This means it cannot use this method to access memory while the CPU is running, as described in the RISC-V debug specification.
 
@@ -175,7 +186,8 @@ To be compliant, the implementation must have at least one of the memory access 
 
 * Create a GDB server that can communicate with the DTM over the SWD interface. This server would use the standard RISC-V debug commands.
 
-* Tools like OpenOCD or probe-rs can be used as a basis for the GDB server, given that they support RISC-V debug specification.
+* Tools like OpenOCD or probe-rs can be used as a basis for the GDB server, given that they support RISC-V debug specification. Currently a custom version of OpenOCD works with VexRiscv.
+
 
 The following conceptual diagram explains the general components and data flow involved in debugging via SWD:
 
