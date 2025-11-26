@@ -128,11 +128,11 @@ The VexRiscv CPU has its own specific debugging implementation that is not compa
 | Halt/Resume/Singlestep                 | ✅ Supported                                                      |
 | Register (GPR/CSR) Read/Write          | ✅ Via instruction injection                                      |
 | Memory Access via Abstract Commands    | ❌ Not standard; done via instruction injection                   |
-| Hardware Breakpoints / Triggers        | ⚠️ Basic support; some issues remain                              |
+| Hardware Breakpoints / Triggers        | ⚠️ Supports PC and load/store triggers, other modes not supported |
 | Program Buffer                         | ✅ Supported                                                      |
-| Multi-hart / Multi-DM support          | ⚠️ Some support shown in scripts, but full spec semantics unclear |
+| Multi-hart / Multi-DM support          | ⚠️ Unable to halt/resume multiple harts with a single command     |
 | Alternate Transport Modules (non-JTAG) | ❌ Not implemented                                                |
-| Full DM/DTM layer per spec             | ❌ Partial; custom version used                                   |
+| DM/DTM layer per spec                  | ❌ Partial; custom version used, need to extend to supprt SWD     |
 
 Other than above features , below feature needs to be implemented :
 
