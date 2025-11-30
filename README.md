@@ -199,3 +199,116 @@ In the diagram:
 * The SW-DP (Debug Port) handles the SWD protocol and provides access to the Debug Module.
 * The Debug Module provides access to the CPU's registers, controls the CPU execution, and provides access to system memory via the system bus.
 * The VexRiscv CPU and the Memory System are debugged through this interface.
+
+## Breakdown of Tasks
+
+Below is the structured **breakdown of tasks** with **estimated effort** .
+
+
+## **1. Refactor/Extend DebugPlugin**
+**Goal:** Align VexRiscv CPU-side debug logic to the RISC-V Debug Spec.
+
+**Tasks:**
+- Add proper halt/resume state machine semantics.
+- Integrate with DM-driven execution (via Program Buffer or injection).
+- Extend CSR / GPR access mechanisms.
+- Implement minimal correct triggers.
+
+**Effort:** **30 person-days**
+
+---
+
+## **2. Implement/Refine DTM + JTAG TAP**
+**Goal:** Make the transport layer spec-compliant.
+
+**Tasks:**
+- Implement DTM state machine + DMI registers.
+- Correct `dtmcs`, abits, idle cycles.
+- Ensure correct TAP IR/DR layout.
+- Connect DTM to DM.
+
+**Effort:** **30 person-days**
+
+---
+
+## **3. SWD Debug Transport Implementation**
+**Goal:** Add Serial Wire Debug support alongside JTAG.
+
+**Tasks:**
+- Implement SWD protocol state machine.
+- Design SWD-DTM bridging to DMI.
+- Integrate with existing DM.
+- Provide SWD pinout and SoC-level wiring.
+- Add SWD support in OpenOCD/probe-rs configs.
+
+**Effort: 30 person-days**
+
+## **4. System Integration into SoC**
+**Goal:** Integrate the new debug architecture into the top-level FPGA/System design.
+
+**Tasks:**
+- Update SoC top-level to expose JTAG pins.
+- Integrate clock domains for debug.
+- Update synthesis/P&R configs.
+
+**Effort:** **15 person-days**
+
+---
+
+## **5. Toolchain Integration (OpenOCD / GDB)**
+**Goal:** Fully debug the system using OpenOCD + GDB.
+
+**Tasks:**
+- Prepare OpenOCD configuration file.
+- Validate DTM/DM operation (halt, step, resume).
+- Validate register/memory access.
+- Validate breakpoints.
+- Optionally extend QEMU model for CI.
+
+**Effort:** **15 person-days**
+
+---
+
+## **6. Verification & Test Infrastructure**
+**Goal:** Ensure the entire debug pipeline behaves predictably.
+
+**Tasks:**
+- Build simulation testbenches for DTM→DM→CPU.
+- Create automated JTAG test sequences.
+- Test edge cases (EBREAK behavior, resume from exceptions).
+- Regression tests.
+
+**Effort:** **15 person-days**
+
+---
+
+## **7. Documentation & Developer Interface**
+**Goal:** Make integration/usage clear for future development.
+
+**Tasks:**
+- Write internal documentation.
+- Write user-facing “How to debug VexRiscv” guide.
+- Comment key code sections.
+
+**Effort:** **15 person-days**
+
+---
+
+## **8. Multi-Hart & Advanced Features**
+**Goal:** Add support for multiple cores and advanced triggers.
+
+**Tasks:**
+- Implement multi-hart DM support.
+- Implement advanced trigger types.
+- Integrate with OpenOCD multi-hart operations.
+- Extend test suite.
+
+**Effort:** **30 person-days**
+
+---
+
+## ** Total Estimated Effort**
+
+Equivalent to **180 person-days** .
+
+---
