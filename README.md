@@ -3,7 +3,7 @@
 <br>SWD Debug support in VexRiscv<br>
 </h1>
 
-
+# RISC-V Debug Support 
 
 ## RISC-V ISA
 
@@ -16,6 +16,8 @@ Comparing to ARM and x86, a RISC-V CPU has the following advantages:
 - Modular : RISC-V has a small standard base ISA, with multiple standard extensions.
 - Stable : Base and first standard extensions are already frozen. There is no need to worry about major updates. 
 - Extensibility : Specific functions can be added based on extensions. There are many more extensions are under development. 
+
+---
 
 ### RISC-V Minimal Viable Debugger
 
@@ -41,14 +43,14 @@ Here's a simplified diagram representing these core components:
              |      (Debug Interface)    |
              v                           v
     +-----------------------+      +-----------------------+
-    |   Memory Access      |----->| Memory                |
-    |  (Read/Write)        |      |                       |
+    |   Memory Access       |----->| Memory                |
+    |  (Read/Write)         |      |                       |
     +-----------------------+      +-----------------------+
              |                           |
              |                           |
     +-----------------------+      +-----------------------+
-    | CPU Register Access  |----->| CPU Registers         |
-    |  (Read/Write)        |      |                       |
+    | CPU Register Access   |----->| CPU Registers         |
+    |  (Read/Write)         |      |                       |
     +-----------------------+      +-----------------------+
              |                           |
              |                           |
@@ -67,7 +69,75 @@ VexRiscv is an FPGA-friendly CPU core that implements the RISC-V instruction set
 VexRiscv is developed using SpinalHDL, a high-level hardware description language that enhances design modularity and reusability. This approach allows for a plugin-based architecture, enabling users to customize and extend the CPU's capabilities to meet specific project requirements.
 
 
-### VexRiscv Current Debugging Status
+#### JTAG support in Vexriscv
+
+JTAG stands for **Joint Test Action Group**. JTAG support in VexRiscv is implemented through a combination of hardware and software components that adhere to the JTAG standard (IEEE 1149.1).
+
+The diagram  below describe how a host computer (with GDB) uses a JTAG interface to debug a VexRiscv CPU.
+
+```
+
++-----------------+
+|  GDB (Host PC)  |
++-------+---------+
+        |
+        v
++-----------------+     +--------------------+
+|   OpenOCD       | --> |  JTAG Dongle       |
+|(VexRiscv Driver)|     | (Jtag Uart Cable)  |
+|   (Host PC)     |     |(TCK, TMS, TDI, TDO)|
++-----------------+     |                    |
+                        +--------------------+
+                                  |
+                                  v
+                    +--------------------------------------------------------------+
+                    |                     Target                                   |
+                    |    +-----------------+    +-------------------+              |
+                    |    |  JTAG Bridge    |--->|  VexRiscv Debug   |              |
+                    |    |(TAP, IR, DR,    |    |     Plugin        |              |
+                    |    |State Machine)   |    |(SystemDebugBus)   |              |
+                    |    +-----------------+    +--------+----------+              |
+                    |                                | (CPU Control, Registers)    |
+                    |                                v                             |
+                    |                     +--------------------------+             |
+                    |                     |      VexRiscv CPU        |             |
+                    |                     +--------------------------+             |
+                    +--------------------------------------------------------------+
+
+```
+
+Debugging VexRiscv using JTAG involves connecting a JTAG dongle to the FPGA, and then using OpenOCD with a VexRiscv specific driver, to communicate with the JTAG bridge, which accesses the CPU debug module, all while GDB executes on the host machine.
+                                     
+##### Host Setup
+
+Terminal 1 on Host :
+```                                              
+  openocd -f interface/ftdi/olimex-jtag-tiny.cfg -f target/riscv.cfg
+```
+
+Terminal 2 on Host :
+```
+  riscv32-unknown-elf-gdb hello.elf
+  (gdb) target remote :3333
+  (gdb) load
+  (gdb) break main
+  (gdb) continue
+  (gdb) info registers
+  (gdb) next
+  (gdb) print message
+  (gdb) x/16x 0x80000000
+
+```
+
+##### Target Setup
+
+<h1 align="center">
+<img src="docs_sample/images/fpga_target.jpg" alt="MkDocs icon" width="470">
+</h1>
+
+---
+
+#### VexRiscv Current Debugging Status
 
 The VexRiscv soft core supports minimal custom debugging by utilizing a debug plugin, which has two registers that allow for complete control of the CPU.
 
@@ -84,44 +154,14 @@ The VexRiscv soft core supports minimal custom debugging by utilizing a debug pl
 With these two registers, the core has all the necessary functions for a complete debugger, thus meeting the minimum requirements of a viable debugger.
 
 
-### JTAG support in Vexriscv
-
-JTAG stands for **Joint Test Action Group**. JTAG support in VexRiscv is implemented through a combination of hardware and software components that adhere to the JTAG standard (IEEE 1149.1).
-
-The diagram  below describe how a host computer (with GDB) uses a JTAG interface to debug a VexRiscv CPU.
-
-                                      +-----------------+
-                                      |    GDB (Host PC)|
-                                      +-------+---------+
-                                              | (GDB remote target protocol)
-                                              v
-                                      +---------------+
-                                      |   OpenOCD     |
-                                      | (VexRiscv     |
-                                      |   Driver)     |
-                                      +-------+-------+
-                                              | (JTAG transactions)
-                                              v
-        +----------+       +-----------------+    +-------------------+
-        |  JTAG    | <---> |  JTAG Bridge    |--->|  VexRiscv Debug   |   
-        |  Dongle  |       |(TAP, IR, DR,    |    |     Plugin        |
-        |(TCK, TMS,|       |State Machine)   |    |(SystemDebugBus)   |
-        |TDI, TDO) |       +-----------------+    +--------+----------+
-        +----------+                                | (CPU Control, Registers)
-                                                    |
-                                                    v
-                                       +--------------------------+
-                                       |      VexRiscv CPU        |
-                                       +--------------------------+
-
-Debugging VexRiscv using JTAG involves connecting a JTAG dongle to the FPGA, and then using OpenOCD with a VexRiscv specific driver, to communicate with the JTAG bridge, which accesses the CPU debug module, all while GDB executes on the host machine.
-A custom version of OpenOCD acts as the glue between GDB and the VexRiscv debug logic, handling the low-level JTAG communication.                                       
-
 ---
 
-## Benefits of standardized Debugging
+## Deviation from Standardized Debugging
 
-The VexRiscv CPU has its own specific debugging implementation that is not compatible with the [standard RISC-V Debug Specification](https://github.com/riscv/riscv-debug-spec). Current deviation from the ratified RISC-V debug specification is listed  below :
+The VexRiscv CPU has its own specific debugging implementation that is not compatible with the [standard RISC-V Debug Specification](https://github.com/riscv/riscv-debug-spec) (v1.0.0-rc4). Current deviation from the ratified RISC-V debug specification is listed below :
+
+
+ Current deviation from the ratified RISC-V debug specification is listed  below :
 
 | Ratified Debug Spec Feature            | VexRiscv Support Status                                           |
 | -------------------------------------- | ----------------------------------------------------------------- |
@@ -136,7 +176,9 @@ The VexRiscv CPU has its own specific debugging implementation that is not compa
 
 Other than above features , below feature needs to be implemented :
 
-- Support for other debug transport like SWD.
+- Support for other debug transport like **SWD**.
+
+---
 
 ### SWD support in Vexriscv
 
@@ -145,11 +187,23 @@ SWD stands for **Serial Wire Debug**. The key differences between  JTAG and SWD 
 * SWD uses a two-wire interface (SWCLK and SWDIO) whereas JTAG uses four wires.
 * SWD is generally faster than JTAG due to less overhead.
 
+The following conceptual diagram explains the general components and data flow involved in debugging via SWD:
+
+<img src="docs_sample/images/SWD.png" alt="MkDocs icon" width="2070">
+
+In the diagram:
+* The Debug Host PC runs debugging software such as GDB and OpenOCD.
+* The Debug Transport Module (DTM) converts the USB/JTAG interface to SWD, communicating with the target system through the SWCLK and SWDIO pins.
+* The SW-DP (Debug Port) handles the SWD protocol and provides access to the Debug Module(DM).
+* The Debug Module(DM) provides access to the CPU's registers, controls the CPU execution, and provides access to system memory via the system bus.
+* The VexRiscv CPU and the Memory System are debugged through this interface.
+
+
 To add support for the RISC-V debug standard over SWD in VexRiscv below steps need to be followed:
 
 #### 1. Debug Module (DM) Implementation:
 
-* RISC-V debug standard DM handles all control operations regarding Halting and Resuming the CPU. Current implementation of Program Buffer in Vexriscv can probably handle this part.
+* RISC-V debug standard DM handles all control operations regarding Halting and Resuming the CPU.
 
 #### 2. Debug Transport Module (DTM) Implementation:
 
@@ -160,155 +214,128 @@ To add support for the RISC-V debug standard over SWD in VexRiscv below steps ne
 
 * DMI is a bus used to communicate with the Debug Module, and it is mapped into the memory space.
 
-##### Memory Access Methods
-
-To be compliant, the implementation must have at least one of the memory access mechanisms: Program Buffer, Abstract Access Memory or System Bus Access (SBA).
-
-- **Program Buffer**: VexRiscv supports  program buffer as specified in the RISC-V debug specification.
-- **Abstract Access Memory**: VexRiscv doesn’t directly implement an abstract access memory command. Instead, it uses its instruction injection port to achieve similar functionality, allowing the debugger to execute any memory access instruction and thus access memory from the hart's perspective.
-- **System Bus Access**: VexRiscv does not implement a separate system bus access block. The instruction injection mechanism is used to access memory and registers, which provides similar functionality but with instructions executed by the CPU. This means it cannot use this method to access memory while the CPU is running, as described in the RISC-V debug specification.
-
-##### Register Access
-
-- VexRiscv's debug implementation accesses CSRs by injecting RISC-V instructions to read or write to these registers.
-- RISC-V debug specification states the Control and Status Registers (CSRs) are accessed using the abstract access register, by or-ing the register number with 0x1000. CSRs can also be accessed using the program buffer, if abstract access is not support
-
-##### Control Register
-
--  VexRiscv uses a single, custom control register for debug control, while the RISC-V debug specification employs a more standardized and distributed approach with multiple control registers.
-
-#### 4. SWD Implementation:
-
-* Implement the SWD protocol, which involves sending data, address, and control bits over the two SWD wires. It's similar to JTAG in terms of functionality but uses fewer wires and is faster.
-* The DTM will translate the SWD messages into the appropriate operations on the DMI.
-
-#### 5. Software Support:
-
-* Create a GDB server that can communicate with the DTM over the SWD interface. This server would use the standard RISC-V debug commands.
-
-* Tools like OpenOCD or probe-rs can be used as a basis for the GDB server, given that they support RISC-V debug specification. Currently a custom version of OpenOCD works with VexRiscv.
 
 
-The following conceptual diagram explains the general components and data flow involved in debugging via SWD:
-
-<img src="docs_sample/images/SWD.png" alt="MkDocs icon" width="2070">
-
-In the diagram:
-* The Debug Host PC runs debugging software such as GDB and OpenOCD.
-* The Debug Transport Module converts the USB/JTAG interface to SWD, communicating with the target system through the SWCLK and SWDIO pins.
-* The SW-DP (Debug Port) handles the SWD protocol and provides access to the Debug Module.
-* The Debug Module provides access to the CPU's registers, controls the CPU execution, and provides access to system memory via the system bus.
-* The VexRiscv CPU and the Memory System are debugged through this interface.
+---
 
 ## Breakdown of Tasks
 
-Below is the structured **breakdown of tasks** with **estimated effort** .
+### **1. Implement Standard Debug spec in Vexriscv**
+**Goal:** Replace proprietary implementation with spec compliant implementation.
 
+**Approach:** Build a new `DebugModulePlugin` alongside the existing `DebugPlugin.scala` (which remains as a fallback). The existing plugin's register interface has zero overlap with the spec, so extending it is not viable. The useful pieces (~50 lines of halt/step/RVC handling) will be extracted and reused.
 
-## **1. Refactor/Extend DebugPlugin**
-**Goal:** Align VexRiscv CPU-side debug logic to the RISC-V Debug Spec.
+**Suggested File Structure:**
+```
+src/main/scala/vexriscv/plugin/
+  DebugPlugin.scala            ← KEEP (existing, for backward compat)
+  DebugModulePlugin.scala      ← NEW: DM registers, abstract commands
+  DebugTransportPlugin.scala   ← NEW: JTAG DTM with standard dtmcs/dmi
+  DebugCsrPlugin.scala         ← NEW: dcsr, dpc, dscratch CSRs on hart
+  TriggerPlugin.scala          ← NEW: tselect, tdata1/2/3, tinfo, tcontrol
+```
 
-**Tasks:**
-- Add proper halt/resume state machine semantics.
-- Integrate with DM-driven execution (via Program Buffer or injection).
-- Extend CSR / GPR access mechanisms.
-- Implement minimal correct triggers.
+**Dependency Chain:**
+```
+Phase 1A: JTAG DTM + DMI Bus           ← Foundation, no dependencies
+    │
+    ▼
+Phase 1B: Core DM (dmcontrol/dmstatus)  ← Needs DMI bus
+    │
+    ▼
+Phase 1C: Abstract Register Access      ← Needs DM registers
+    │
+    ├──▼
+    │  Phase 1D: Debug CSRs (dcsr/dpc)   ← Needs register access
+    │      │
+    │      ▼
+    │  Phase 1F: Trigger Module           ← Needs dcsr for cause reporting
+    │
+    └──▼
+       Phase 1E: Memory Access            ← Needs abstract command framework
+```
+#### GDB Capability per Phase for Hello World Debugging
 
-**Effort:** **30 person-days**
+| Phase | Milestone | GDB Capabilities | What Can be Verified |
+|---|---|---|---|
+| **1A** | DTM + DMI bus | JTAG chain detected, nothing else | JTAG connectivity |
+| **1B** | DM control | Halt, resume, reset | Hello world UART output starts/stops with halt/resume |
+| **1C** | Register access | Read/write all GPRs and CSRs | See PC, SP, arguments; identify which function is executing |
+| **1D** | Debug CSRs | Single-step, halt cause, debug mode | Step through instructions one at a time; see why hart halted |
+| **1E** | **Memory access** | **Full debug: load, break, step, print, backtrace, memory** | **Complete hello world debug session** (software breakpoints) |
+| **1F** | Triggers | Hardware breakpoints, data watchpoints | Breakpoints on ROM/flash; watch variable changes |
+
+**Phase 1E is the target for a complete hello world debugging experience with mainstream OpenOCD + GDB.** Phases 1A-1D are incremental milestones that let you validate each layer before building the next.
 
 ---
 
-## **2. Implement/Refine DTM + JTAG TAP**
-**Goal:** Make the transport layer spec-compliant.
 
-**Tasks:**
-- Implement DTM state machine + DMI registers.
-- Correct `dtmcs`, abits, idle cycles.
-- Ensure correct TAP IR/DR layout.
-- Connect DTM to DM.
-
-**Effort:** **30 person-days**
-
----
-
-## **3. SWD Debug Transport Implementation**
+## **2. SWD Debug Transport Implementation**
 **Goal:** Add Serial Wire Debug support alongside JTAG.
 
 **Tasks:**
-- Implement SWD protocol state machine.
-- Design SWD-DTM bridging to DMI.
-- Integrate with existing DM.
-- Provide SWD pinout and SoC-level wiring.
-- Add SWD support in OpenOCD/probe-rs configs.
+- [ ] Implement SWD protocol state machine (SWCLK/SWDIO two-wire interface)
+- [ ] Design SWD-DTM bridging to DMI to translate the SWD messages into the appropriate operations on the DMI
+- [ ] Integrate with standard DM (from Task 1)
+- [ ] Provide SWD pinout and SoC-level wiring
+- [ ] Add SWD support in OpenOCD/probe-rs configs
 
-**Effort: 30 person-days**
 
-## **4. System Integration into SoC**
+---
+
+## **3. System Integration into SoC**
 **Goal:** Integrate the new debug architecture into the top-level FPGA/System design.
 
 **Tasks:**
-- Update SoC top-level to expose JTAG pins.
-- Integrate clock domains for debug.
-- Update synthesis/P&R configs.
-
-**Effort:** **15 person-days**
+- [ ] Update SoC top-level to expose standard JTAG pins (TCK/TMS/TDI/TDO/TRST)
+- [ ] Integrate clock domains for debug (debug clock vs. system clock)
+- [ ] Update synthesis/P&R configs
+- [ ] Wire DM to hart debug signals (halt request, resume ack, etc.)
+- [ ] Wire SBA port to system bus (if implementing System Bus Access)
 
 ---
 
-## **5. Toolchain Integration (OpenOCD / GDB)**
-**Goal:** Fully debug the system using OpenOCD + GDB.
+
+## **4. Verification & Test Infrastructure**
+**Goal:** Ensure the entire debug pipeline behaves per spec.
 
 **Tasks:**
-- Prepare OpenOCD configuration file.
-- Validate DTM/DM operation (halt, step, resume).
-- Validate register/memory access.
-- Validate breakpoints.
-- Optionally extend QEMU model for CI.
-
-**Effort:** **15 person-days**
-
----
-
-## **6. Verification & Test Infrastructure**
-**Goal:** Ensure the entire debug pipeline behaves predictably.
-
-**Tasks:**
-- Build simulation testbenches for DTM→DM→CPU.
-- Create automated JTAG test sequences.
-- Test edge cases (EBREAK behavior, resume from exceptions).
-- Regression tests.
-
-**Effort:** **15 person-days**
+- [ ] Build simulation testbenches for DTM→DMI→DM→CPU path
+- [ ] Create automated JTAG test sequences for DMI operations
+- [ ] Test `dmactive` activation/deactivation sequence
+- [ ] Test abstract command error handling (all 7 `cmderr` codes)
+- [ ] Test EBREAK behavior with `dcsr.ebreakm`/`ebreaks`/`ebreaku` combinations
+- [ ] Test single-step across privilege mode transitions
+- [ ] Test trigger module: each trigger type, chaining, `dmode` security
+- [ ] Test System Bus Access error handling (if implemented)
+- [ ] Test authentication mechanism (if implemented)
+- [ ] Regression tests for all implemented features
 
 ---
 
-## **7. Documentation & Developer Interface**
+## **5. Documentation & Developer Interface**
 **Goal:** Make integration/usage clear for future development.
 
 **Tasks:**
-- Write internal documentation.
-- Write user-facing “How to debug VexRiscv” guide.
-- Comment key code sections.
-
-**Effort:** **15 person-days**
+- [ ] Write internal architecture documentation (DM/DTM/Trigger block diagrams)
+- [ ] Write user-facing “How to debug VexRiscv” guide (using standard OpenOCD)
+- [ ] Document which optional spec features are implemented
+- [ ] Document WARL field legal values for each register
+- [ ] Comment key code sections in new DM/DTM implementation
 
 ---
 
-## **8. Multi-Hart & Advanced Features**
-**Goal:** Add support for multiple cores and advanced triggers.
+## **6. Multi-Hart & Advanced Features (Optional)**
+**Goal:** Add support for multiple cores and advanced features.
 
 **Tasks:**
-- Implement multi-hart DM support.
-- Implement advanced trigger types.
-- Integrate with OpenOCD multi-hart operations.
-- Extend test suite.
-
-**Effort:** **30 person-days**
-
----
-
-## ** Total Estimated Effort**
-
-Equivalent to **180 person-days** .
+- [ ] Implement multi-hart DM support (`hartsel`, `hasel`, hart arrays)
+- [ ] Implement halt/resume groups via `dmcs2`
+- [ ] Implement `haltsum0-3` for efficient multi-hart halt polling
+- [ ] Implement DM chaining via `nextdm` for multiple DMs
+- [ ] Implement advanced trigger types (`itrigger`, `etrigger`, `tmexttrigger`)
+- [ ] Implement trigger context matching (`mcontext`/`scontext`/`hcontext`)
+- [ ] Integrate with OpenOCD multi-hart operations
+- [ ] Extend test suite for multi-hart scenarios
 
 ---
