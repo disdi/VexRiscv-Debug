@@ -268,7 +268,7 @@ Phase 1C: Abstract Register Access      ← Needs DM registers
 Phases 1A-1D are incremental milestones that let you validate each layer before building the next.
 **Phase 1E is the target for a complete hello world debugging experience with mainstream OpenOCD + GDB.** 
 
-Detailed tasks and milestines planned for each Phase can be found [here](https://saketsinha.de/standard-debug-vexriscv).
+Detailed tasks and milestones planned for implementation of each Phase can be found at [Standard Debug Spec Milestone](https://saketsinha.de/standard-debug-vexriscv).
 
 ---
 
