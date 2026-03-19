@@ -265,7 +265,10 @@ Phase 1C: Abstract Register Access      ← Needs DM registers
 | **1E** | **Memory access** | **Full debug: load, break, step, print, backtrace, memory** | **Complete hello world debug session** (software breakpoints) |
 | **1F** | Triggers | Hardware breakpoints, data watchpoints | Breakpoints on ROM/flash; watch variable changes |
 
-**Phase 1E is the target for a complete hello world debugging experience with mainstream OpenOCD + GDB.** Phases 1A-1D are incremental milestones that let you validate each layer before building the next.
+Phases 1A-1D are incremental milestones that let you validate each layer before building the next.
+**Phase 1E is the target for a complete hello world debugging experience with mainstream OpenOCD + GDB.** 
+
+Detailed tasks and milestines planned for each Phase can be found [here](https://saketsinha.de/standard-debug-vexriscv).
 
 ---
 
