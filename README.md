@@ -137,49 +137,6 @@ Terminal 2 on Host :
 
 ---
 
-#### VexRiscv Current Debugging Status
-
-The VexRiscv soft core supports minimal custom debugging by utilizing a debug plugin, which has two registers that allow for complete control of the CPU.
-
-*   The **first register, Control Register** accessed at address zero, is a 32-bit register used to control the CPU. Through this register, it is possible to:
-    *   Reset the CPU.
-    *   Check if the CPU is halted.
-    *   Single-step the CPU.
-    *   Detect if the CPU has hit a breakpoint.
-
-*   The **second Instruction Injection Port** is used to inject instructions into the CPU pipeline. By writing an instruction to this register, the CPU executes the instruction when it is paused.  The result of the instruction is then read from the same register. This allows for reading and writing to all of the CPU registers.
-    *   For example, by injecting an instruction that moves a value from one register to another, the debugger can read the value of the source register by examining the destination register after execution.
-    *   This same method can be used to construct memory addresses and write values to memory.
-
-With these two registers, the core has all the necessary functions for a complete debugger, thus meeting the minimum requirements of a viable debugger.
-
-
----
-
-## Deviation from Standardized Debugging
-
-The VexRiscv CPU has its own specific debugging implementation that is not compatible with the [standard RISC-V Debug Specification](https://github.com/riscv/riscv-debug-spec) (v1.0.0-rc4). Current deviation from the ratified RISC-V debug specification is listed below :
-
-
- Current deviation from the ratified RISC-V debug specification is listed  below :
-
-| Ratified Debug Spec Feature            | VexRiscv Support Status                                           |
-| -------------------------------------- | ----------------------------------------------------------------- |
-| Halt/Resume/Singlestep                 | ✅ Supported                                                      |
-| Register (GPR/CSR) Read/Write          | ✅ Via instruction injection                                      |
-| Memory Access via Abstract Commands    | ❌ Not standard; done via instruction injection                   |
-| Hardware Breakpoints / Triggers        | ⚠️ Supports PC and load/store triggers, other modes not supported |
-| Program Buffer                         | ✅ Supported                                                      |
-| Multi-hart / Multi-DM support          | ⚠️ Unable to halt/resume multiple harts with a single command     |
-| Alternate Transport Modules (non-JTAG) | ❌ Not implemented                                                |
-| DM/DTM layer per spec                  | ❌ Partial; custom version used, need to extend to supprt SWD     |
-
-Other than above features , below feature needs to be implemented :
-
-- Support for other debug transport like **SWD**.
-
----
-
 ### SWD support in Vexriscv
 
 SWD stands for **Serial Wire Debug**. The key differences between  JTAG and SWD are :
@@ -221,54 +178,9 @@ To add support for the RISC-V debug standard over SWD in VexRiscv below steps ne
 ## Breakdown of Tasks
 
 ### **1. Implement Standard Debug spec in Vexriscv**
-**Goal:** Replace proprietary implementation with spec compliant implementation.
+**Goal:** Extend current implementation with spec compliant implementation.
 
-**Approach:** Build a new `DebugModulePlugin` alongside the existing `DebugPlugin.scala` (which remains as a fallback). The existing plugin's register interface has zero overlap with the spec, so extending it is not viable. The useful pieces (~50 lines of halt/step/RVC handling) will be extracted and reused.
-
-**Suggested File Structure:**
-```
-src/main/scala/vexriscv/plugin/
-  DebugPlugin.scala            ← KEEP (existing, for backward compat)
-  DebugModulePlugin.scala      ← NEW: DM registers, abstract commands
-  DebugTransportPlugin.scala   ← NEW: JTAG DTM with standard dtmcs/dmi
-  DebugCsrPlugin.scala         ← NEW: dcsr, dpc, dscratch CSRs on hart
-  TriggerPlugin.scala          ← NEW: tselect, tdata1/2/3, tinfo, tcontrol
-```
-
-**Dependency Chain:**
-```
-Phase 1A: JTAG DTM + DMI Bus           ← Foundation, no dependencies
-    │
-    ▼
-Phase 1B: Core DM (dmcontrol/dmstatus)  ← Needs DMI bus
-    │
-    ▼
-Phase 1C: Abstract Register Access      ← Needs DM registers
-    │
-    ├──▼
-    │  Phase 1D: Debug CSRs (dcsr/dpc)   ← Needs register access
-    │      │
-    │      ▼
-    │  Phase 1F: Trigger Module           ← Needs dcsr for cause reporting
-    │
-    └──▼
-       Phase 1E: Memory Access            ← Needs abstract command framework
-```
-#### GDB Capability per Phase for Hello World Debugging
-
-| Phase | Milestone | GDB Capabilities | What Can be Verified |
-|---|---|---|---|
-| **1A** | DTM + DMI bus | JTAG chain detected, nothing else | JTAG connectivity |
-| **1B** | DM control | Halt, resume, reset | Hello world UART output starts/stops with halt/resume |
-| **1C** | Register access | Read/write all GPRs and CSRs | See PC, SP, arguments; identify which function is executing |
-| **1D** | Debug CSRs | Single-step, halt cause, debug mode | Step through instructions one at a time; see why hart halted |
-| **1E** | **Memory access** | **Full debug: load, break, step, print, backtrace, memory** | **Complete hello world debug session** (software breakpoints) |
-| **1F** | Triggers | Hardware breakpoints, data watchpoints | Breakpoints on ROM/flash; watch variable changes |
-
-Phases 1A-1D are incremental milestones that let you validate each layer before building the next.
-**Phase 1E is the target for a complete hello world debugging experience with mainstream OpenOCD + GDB.** 
-
-Detailed tasks and milestones planned for implementation of each Phase can be found at [Standard Debug Spec Milestone](https://saketsinha.de/standard-debug-vexriscv).
+Detailed tasks and milestones planned for implementation can be found at [Standard Debug Spec Milestone](https://saketsinha.de/standard-debug-vexriscv).
 
 ---
 
