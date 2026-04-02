@@ -406,7 +406,7 @@ JTAG TAP + dtmcs/dmi                         SWD Interface (Phase 2A)
 
 **Tasks:**
 - [ ] Build simulation testbenches for DTM→DMI→DM→CPU path
-- [ ] Create automated JTAG test sequences for DMI operations
+- [ ] Send automated SWD/JTAG test stimuli via OPENOCD for DMI operations
 - [ ] Test `dmactive` activation/deactivation sequence
 - [ ] Test abstract command error handling (all 7 `cmderr` codes)
 - [ ] Test EBREAK behavior with `dcsr.ebreakm`/`ebreaks`/`ebreaku` combinations
